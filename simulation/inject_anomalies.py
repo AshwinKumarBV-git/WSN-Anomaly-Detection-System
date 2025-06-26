@@ -5,7 +5,7 @@ from datetime import timedelta
 import os
 
 
-def inject_dos_attack(df, attack_duration_minutes=30, start_offset_days=None):
+def inject_dos_attack(df, attack_duration_minutes=1500, start_offset_days=None):
     """
     Inject Denial of Service (DoS) attack anomalies
     Simulates packet loss by nullifying or dropping data points
@@ -64,7 +64,7 @@ def inject_dos_attack(df, attack_duration_minutes=30, start_offset_days=None):
     return df_copy
 
 
-def inject_jamming_attack(df, attack_duration_minutes=45, start_offset_days=None):
+def inject_jamming_attack(df, attack_duration_minutes=1500, start_offset_days=None):
     """
     Inject jamming attack anomalies
     Adds random high-frequency noise to sensor readings
@@ -125,7 +125,7 @@ def inject_jamming_attack(df, attack_duration_minutes=45, start_offset_days=None
     return df_copy
 
 
-def inject_tampering_attack(df, attack_duration_minutes=60, start_offset_days=None):
+def inject_tampering_attack(df, attack_duration_minutes=1500, start_offset_days=None):
     """
     Inject tampering attack anomalies
     Creates sudden drifts or step changes in sensor values
@@ -190,7 +190,7 @@ def inject_tampering_attack(df, attack_duration_minutes=60, start_offset_days=No
     return df_copy
 
 
-def inject_hardware_fault(df, attack_duration_minutes=120, start_offset_days=None):
+def inject_hardware_fault(df, attack_duration_minutes=1500, start_offset_days=None):
     """
     Inject hardware fault anomalies
     Creates flat lines or repeated constant values
@@ -265,7 +265,7 @@ def inject_hardware_fault(df, attack_duration_minutes=120, start_offset_days=Non
     return df_copy
 
 
-def inject_environmental_noise(df, attack_duration_minutes=40, start_offset_days=None):
+def inject_environmental_noise(df, attack_duration_minutes=1500, start_offset_days=None):
     """
     Inject environmental noise anomalies
     Adds Gaussian or salt-and-pepper noise bursts
