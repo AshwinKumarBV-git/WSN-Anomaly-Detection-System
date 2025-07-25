@@ -78,7 +78,6 @@ def load_and_preprocess_data(data_path, feature_extractor=None, test_size=0.2, r
         # If no labels, just split X
         X_train, X_test = train_test_split(X, test_size=test_size, random_state=random_state)
         y_train, y_test = None, None
-    
     # Get feature names
     feature_names = X.columns.tolist()
     
@@ -310,7 +309,10 @@ def main():
     
     # Load and preprocess data
     X_train, X_test, y_train, y_test, feature_names = load_and_preprocess_data(data_path)
-    
+    print("test data: ", X_test.head())
+    print("test labels: ", y_test.head())
+    print("feature names: ", feature_names)
+    print("test data shape: ", X_test.shape) 
     # Print data info
     print(f"Training data shape: {X_train.shape}")
     print(f"Test data shape: {X_test.shape}")

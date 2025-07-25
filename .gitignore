@@ -1,1 +1,15 @@
 /wsn
+/simulation/__pycache__
+/logs
+/backend/__pycache__
+/backend/preprocessing/__pycache__
+/backend/services/__pycache__
+/simulation/__pycache__
+backend/__pycache__/
+backend/models/
+backend/services/__pycache__/data_validator.cpython-311.pyc  
+backend/utils/__pycache__/
+data/
+models/
+backend/preprocessing/__pycache__/feature_extractor.cpython-311.pyc
+backend/services/__pycache__/predictor.cpython-311.pyc
