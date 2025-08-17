@@ -90,7 +90,7 @@ const useGemini = () => {
         setError(null);
         setData(null);
 
-        const apiKey = "AIzaSyCGZ5lwEVHTjk39u_4itpXhBOU1WUYsnK0"; // Leave blank, will be handled by the environment
+        const apiKey = ""; // Leave blank, will be handled by the environment
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
         const payload = {
