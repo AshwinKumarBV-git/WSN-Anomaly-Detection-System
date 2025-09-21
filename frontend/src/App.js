@@ -1,29 +1,23 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Upload, Thermometer, Activity, HeartPulse, Cpu, MemoryStick, Server, Bot, FileJson, TestTube2, Home, ShieldCheck, Info, Sparkles } from 'lucide-react';
+import { Activity, Cpu, MemoryStick, Server, Bot, FileJson, TestTube2, Home, ShieldCheck, Info, Upload } from 'lucide-react';
+import { GlassCard, GlassButton, GlassInput, GlassSelect } from './components/GlassCard';
+import DataVisualization from './components/DataVisualization';
+import Notification from './components/Notification';
+import useNotification from './hooks/useNotification';
 
 // --- Configuration ---
-const API_BASE_URL = "http://127.0.0.1:8000"; // IMPORTANT: Replace with your actual backend URL if different
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 const ANOMALY_COLORS = {
-    normal: "#2ECC71",
-    DoS: "#E74C3C",
-    Jamming: "#F39C12",
-    Tampering: "#9B59B6",
-    HardwareFault: "#3498DB",
-    EnvironmentalNoise: "#1ABC9C",
-    unknown: "#95A5A6",
-    anomaly: "#E74C3C",
-    error: "#F1C40F"
+  normal: '#10B981',
+  anomaly: '#EF4444',
+  unknown: '#6B7280'
 };
 
 const ANOMALY_TYPES = {
-    0: "normal",
-    1: "DoS",
-    2: "Jamming",
-    3: "Tampering",
-    4: "HardwareFault",
-    5: "EnvironmentalNoise"
+  normal: 'Normal',
+  anomaly: 'Anomaly',
+  unknown: 'Unknown'
 };
 
 const navItems = [
@@ -40,6 +34,7 @@ const useApi = (endpoint, options = {}) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const { showNotification } = useNotification();
 
     const execute = useCallback(async (body = null, queryParams = {}) => {
         setLoading(true);
@@ -69,81 +64,38 @@ const useApi = (endpoint, options = {}) => {
             return result;
         } catch (e) {
             setError(e.message);
+            showNotification(e.message, 'error');
             console.error(`API call to ${endpoint} failed:`, e);
             return null;
         } finally {
             setLoading(false);
         }
-    }, [endpoint, options.method, options.headers]);
+    }, [endpoint, options.method, options.headers, showNotification]);
 
     return { data, loading, error, execute };
 };
-
-// New hook for Gemini API calls
-const useGemini = () => {
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-
-    const execute = useCallback(async (prompt) => {
-        setLoading(true);
-        setError(null);
-        setData(null);
-
-        const apiKey = ""; // Leave blank, will be handled by the environment
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-        const payload = {
-            contents: [{
-                parts: [{ text: prompt }]
-            }]
-        };
-
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                const errorBody = await response.json();
-                throw new Error(errorBody.error?.message || 'Gemini API request failed');
-            }
-
-            const result = await response.json();
-            
-            if (result.candidates && result.candidates.length > 0 &&
-                result.candidates[0].content && result.candidates[0].content.parts &&
-                result.candidates[0].content.parts.length > 0) {
-                const text = result.candidates[0].content.parts[0].text;
-                setData(text);
-                return text;
-            } else {
-                throw new Error("Invalid response structure from Gemini API");
-            }
-        } catch (e) {
-            setError(e.message);
-            console.error("Gemini API call failed:", e);
-            return null;
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    return { data, loading, error, execute };
-};
-
 
 // --- UI Components ---
-
-const GlassCard = ({ children, className = '', onClick }) => (
-    <div 
-        className={`bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 shadow-lg transition-all duration-300 hover:shadow-xl hover:bg-white/20 ${className}`}
-        onClick={onClick}
-    >
-        {children}
+const Loader = ({ message = "Loading..." }) => (
+    <div className="flex flex-col items-center justify-center p-8 text-white">
+        <svg className="animate-spin h-8 w-8 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p className="mt-4 text-lg">{message}</p>
     </div>
+);
+
+const ErrorDisplay = ({ message }) => (
+    <GlassCard className="p-6 bg-red-500/20 border-red-500/50">
+        <div className="flex items-center">
+            <Info className="w-8 h-8 text-red-400 mr-4" />
+            <div>
+                <h3 className="text-xl font-bold text-red-300">An Error Occurred</h3>
+                <p className="text-white mt-1">{message}</p>
+            </div>
+        </div>
+    </GlassCard>
 );
 
 const Sidebar = ({ activeSection, setActiveSection }) => {
@@ -170,7 +122,7 @@ const Sidebar = ({ activeSection, setActiveSection }) => {
                 </ul>
             </nav>
             <div className="text-center text-gray-400 text-xs">
-                <p>Version 4.0 (Gemini)</p>
+                <p>Version 3.1</p>
                 <p>&copy; 2025 WSN Anomaly Detection</p>
             </div>
         </GlassCard>
@@ -194,96 +146,71 @@ const StatCard = ({ icon, title, value, unit, color }) => {
     );
 };
 
-const Loader = ({ message = "Loading..." }) => (
-    <div className="flex flex-col items-center justify-center p-8 text-white">
-        <svg className="animate-spin h-8 w-8 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <p className="mt-4 text-lg">{message}</p>
-    </div>
-);
+// --- Main App Component ---
+const App = () => {
+    const [activeSection, setActiveSection] = useState('dashboard');
+    const { notification, showNotification, hideNotification } = useNotification();
 
-const ErrorDisplay = ({ message }) => (
-    <GlassCard className="p-6 bg-red-500/20 border-red-500/50">
-        <div className="flex items-center">
-            <Info className="w-8 h-8 text-red-400 mr-4" />
-            <div>
-                <h3 className="text-xl font-bold text-red-300">An Error Occurred</h3>
-                <p className="text-white mt-1">{message}</p>
-            </div>
-        </div>
-    </GlassCard>
-);
-
-const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-        return (
-            <GlassCard className="p-3 text-sm">
-                <p className="label text-white font-bold">{`Time: ${label}`}</p>
-                {payload.map((p, i) => (
-                    <p key={i} style={{ color: p.color }}>{`${p.name}: ${p.value.toFixed(2)}`}</p>
-                ))}
-            </GlassCard>
-        );
-    }
-    return null;
-};
-
-// --- New Gemini Component ---
-const GeminiAnalysisCard = ({ prediction, sensorData }) => {
-    const { data: analysis, loading, error, execute: getAnalysis } = useGemini();
-
-    const handleAnalysisClick = () => {
-        const prompt = `
-            You are an expert analyst for a Wireless Sensor Network.
-            An anomaly has been detected with the following details:
-            - Anomaly Type: ${prediction.prediction}
-            - Confidence: ${(prediction.confidence * 100).toFixed(2)}%
-            - Temperature: ${sensorData.temperature.toFixed(1)} °C
-            - Motion: ${sensorData.motion === 1 ? 'Detected' : 'No Motion'}
-            - Pulse: ${sensorData.pulse.toFixed(1)} BPM
-
-            Based on this data, please provide the following in a clear, concise format:
-            1. A simple, one-sentence explanation of what this anomaly means in the context of a wireless sensor network.
-            2. A numbered list of 3 recommended, actionable steps for a network operator to take to investigate and resolve this issue.
-        `;
-        getAnalysis(prompt);
+    const renderContent = () => {
+        switch (activeSection) {
+            case 'dashboard':
+                return <DashboardSection showNotification={showNotification} />;
+            case 'status':
+                return <SystemStatusSection />;
+            case 'models':
+                return <ModelsSection />;
+            case 'predict':
+                return <RealtimePredictionSection showNotification={showNotification} />;
+            case 'batch':
+                return <BatchPredictionSection showNotification={showNotification} />;
+            case 'simulate':
+                return <SimulateDataSection showNotification={showNotification} />;
+            default:
+                return <DashboardSection showNotification={showNotification} />;
+        }
     };
 
     return (
-        <GlassCard className="p-6 mt-6 bg-purple-500/10 border-purple-400/50">
-            <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-                <Sparkles className="w-6 h-6 mr-3 text-purple-300" />
-                AI Analysis
-            </h3>
-            {!analysis && !loading && (
-                 <button onClick={handleAnalysisClick} className="w-full flex items-center justify-center bg-purple-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-600 transition duration-300">
-                    <Sparkles className="w-5 h-5 mr-2" />
-                    Get AI Analysis & Recommendations
-                </button>
-            )}
-            {loading && <Loader message="Getting insights from Gemini..." />}
-            {error && <ErrorDisplay message={error} />}
-            {analysis && (
-                <div className="text-white space-y-3 whitespace-pre-wrap font-mono">
-                    {analysis}
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+            <div className="container mx-auto px-4 py-8">
+                <div className="grid grid-cols-12 gap-6">
+                    <div className="col-span-12 lg:col-span-3">
+                        <Sidebar activeSection={activeSection} setActiveSection={setActiveSection} />
+                    </div>
+                    <div className="col-span-12 lg:col-span-9">
+                        {renderContent()}
+                    </div>
                 </div>
+            </div>
+            {notification && (
+                <Notification
+                    type={notification.type}
+                    message={notification.message}
+                    onClose={hideNotification}
+                />
             )}
-        </GlassCard>
+        </div>
     );
 };
 
+export default App;
 
-// --- Page/Section Components ---
+// --- Section Components ---
+// Note: These components (DashboardSection, SystemStatusSection, etc.) should be
+// moved to separate files in a real application for better organization
 
-const DashboardSection = () => {
-    const { data: rootData, loading: rootLoading, error: rootError, execute: fetchRoot } = useApi('/');
-    const { data: healthData, loading: healthLoading, error: healthError, execute: fetchHealth } = useApi('/health');
+const DashboardSection = ({ showNotification }) => {
+    const { data: rootData, loading: rootLoading, execute: fetchRoot } = useApi('/');
+    const { data: healthData, loading: healthLoading, execute: fetchHealth } = useApi('/health');
 
     useEffect(() => {
         fetchRoot();
         fetchHealth();
+        const interval = setInterval(() => {
+            fetchRoot();
+            fetchHealth();
+        }, 30000);
+        return () => clearInterval(interval);
     }, [fetchRoot, fetchHealth]);
 
     return (
@@ -293,13 +220,13 @@ const DashboardSection = () => {
                 <GlassCard className="p-6">
                     <h3 className="text-xl font-semibold text-white mb-4">API Root Status</h3>
                     {rootLoading && <Loader />}
-                    {rootError && <ErrorDisplay message={rootError} />}
+
                     {rootData && <p className="text-green-300">{rootData.message}</p>}
                 </GlassCard>
                 <GlassCard className="p-6">
                     <h3 className="text-xl font-semibold text-white mb-4">API Health Check</h3>
                     {healthLoading && <Loader />}
-                    {healthError && <ErrorDisplay message={healthError} />}
+
                     {healthData && (
                         <div>
                             <p className="text-green-300">Status: {healthData.status}</p>
@@ -317,7 +244,7 @@ const SystemStatusSection = () => {
 
     useEffect(() => {
         const interval = setInterval(() => execute(), 5000);
-        execute(); // Initial fetch
+        execute();
         return () => clearInterval(interval);
     }, [execute]);
 
@@ -389,10 +316,10 @@ const ModelsSection = () => {
     );
 };
 
-const RealtimePredictionSection = () => {
-    const { data: batchData, loading, error, execute: executeBatch } = useApi('/predict/batch', { method: 'POST' });
+const RealtimePredictionSection = ({ showNotification }) => {
+    const { data, loading, error, execute } = useApi('/predict', { method: 'POST' });
     const [formData, setFormData] = useState({ temperature: 25.0, motion: 0, pulse: 70.0 });
-    const [latestPrediction, setLatestPrediction] = useState(null);
+    const [chartData, setChartData] = useState([]);
 
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
@@ -401,56 +328,18 @@ const RealtimePredictionSection = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLatestPrediction(null);
-
-        const windowSize = 30;
-        const now = new Date();
-        const sensorReadings = new Array(windowSize);
-
-        for (let i = 0; i < windowSize; i++) {
-            const timestamp = new Date(now.getTime() - (windowSize - 1 - i) * 1000).toISOString();
-            
-            let currentTemp, currentPulse, currentMotion;
-            if (i === windowSize - 1) {
-                currentTemp = formData.temperature;
-                currentPulse = formData.pulse;
-                currentMotion = formData.motion;
-            } else {
-                const pulseVariation = 2.5 * Math.sin((i / windowSize) * Math.PI * 2);
-                const tempVariation = 0.5 * Math.sin((i / windowSize) * Math.PI * 2);
-                const pulseNoise = (Math.random() - 0.5) * 2;
-                const tempNoise = (Math.random() - 0.5) * 0.2;
-
-                currentTemp = formData.temperature + tempVariation + tempNoise;
-                currentPulse = formData.pulse + pulseVariation + pulseNoise;
-                currentMotion = Math.random() < 0.05 ? 1 : 0;
-            }
-
-            sensorReadings[i] = {
-                temperature: currentTemp,
-                motion: currentMotion,
-                pulse: currentPulse,
-                timestamp: timestamp,
-                sensor_id: "realtime_test_window"
-            };
-        }
-
-        const payload = { 
-            data: sensorReadings,
-            return_probabilities: true
+        const timestamp = new Date().toISOString();
+        const payload = {
+            data: { ...formData, timestamp, sensor_id: "realtime_test" },
+            return_probabilities: true,
+            return_features: true,
         };
-        
-        const result = await executeBatch(payload);
-        
-        if (result && result.predictions && result.predictions.length > 0) {
-            setLatestPrediction(result.predictions[result.predictions.length - 1]);
+        const result = await execute(payload);
+        if (result) {
+            setChartData(prev => [...prev, { ...formData, timestamp, prediction: result.prediction }].slice(-20));
+            showNotification(`Prediction: ${result.prediction}`, result.prediction === 'normal' ? 'success' : 'warning');
         }
     };
-    
-    const pieData = latestPrediction?.probabilities ? Object.entries(latestPrediction.probabilities).map(([key, value]) => ({
-        name: ANOMALY_TYPES[key] || key,
-        value,
-    })) : [];
 
     return (
         <div>
@@ -461,56 +350,69 @@ const RealtimePredictionSection = () => {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1">Temperature (°C)</label>
-                            <input type="number" name="temperature" value={formData.temperature} onChange={handleInputChange} className="w-full bg-white/10 border border-white/20 rounded-lg p-2 text-white focus:ring-cyan-400 focus:border-cyan-400" step="0.1" />
+                            <GlassInput
+                                type="number"
+                                name="temperature"
+                                value={formData.temperature}
+                                onChange={handleInputChange}
+                                step="0.1"
+                            />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1">Motion</label>
-                            <select name="motion" value={formData.motion} onChange={handleInputChange} className="w-full bg-white/10 border border-white/20 rounded-lg p-2 text-white focus:ring-cyan-400 focus:border-cyan-400">
+                            <GlassSelect
+                                name="motion"
+                                value={formData.motion}
+                                onChange={handleInputChange}
+                            >
                                 <option value={0}>No Motion</option>
                                 <option value={1}>Motion Detected</option>
-                            </select>
+                            </GlassSelect>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1">Pulse (BPM)</label>
-                            <input type="number" name="pulse" value={formData.pulse} onChange={handleInputChange} className="w-full bg-white/10 border border-white/20 rounded-lg p-2 text-white focus:ring-cyan-400 focus:border-cyan-400" step="0.1" />
+                            <GlassInput
+                                type="number"
+                                name="pulse"
+                                value={formData.pulse}
+                                onChange={handleInputChange}
+                                step="0.1"
+                            />
                         </div>
-                        <button type="submit" disabled={loading} className="w-full bg-cyan-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-cyan-600 transition duration-300 disabled:bg-gray-500">
+                        <GlassButton
+                            type="submit"
+                            disabled={loading}
+                            className="w-full text-white font-bold py-2 px-4"
+                        >
                             {loading ? 'Analyzing...' : 'Predict Anomaly'}
-                        </button>
+                        </GlassButton>
                     </form>
                 </GlassCard>
-                <div>
+
+                <div className="space-y-6">
                     <GlassCard className="p-6">
                         <h3 className="text-xl font-semibold text-white mb-4">Prediction Result</h3>
                         {loading && <Loader />}
                         {error && <ErrorDisplay message={error} />}
-                        {latestPrediction && (
+                        {data && (
                             <div className="space-y-4">
-                                <div className={`p-4 rounded-lg border-2 ${latestPrediction.prediction === 'normal' ? 'border-green-400 bg-green-500/20' : 'border-red-400 bg-red-500/20'}`}>
-                                    <p className="text-lg font-bold text-white">Prediction: <span className={latestPrediction.prediction === 'normal' ? 'text-green-300' : 'text-red-300'}>{latestPrediction.prediction}</span></p>
-                                    <p className="text-white">Confidence: {(latestPrediction.confidence * 100).toFixed(2)}%</p>
+                                <div className={`p-4 rounded-lg border-2 ${data.prediction === 'normal' ? 'border-green-400 bg-green-500/20' : 'border-red-400 bg-red-500/20'}`}>
+                                    <p className="text-lg font-bold text-white">Prediction: <span className={data.prediction === 'normal' ? 'text-green-300' : 'text-red-300'}>{data.prediction}</span></p>
+                                    <p className="text-white">Confidence: {(data.confidence * 100).toFixed(2)}%</p>
                                 </div>
-                                 {pieData.length > 0 && (
-                                    <div>
-                                        <h4 className="font-semibold text-white mb-2">Probabilities</h4>
-                                        <ResponsiveContainer width="100%" height={200}>
-                                            <PieChart>
-                                                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} fill="#8884d8">
-                                                    {pieData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={ANOMALY_COLORS[entry.name] || '#95A5A6'} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip />
-                                                <Legend />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                )}
                             </div>
                         )}
                     </GlassCard>
-                    {latestPrediction && latestPrediction.prediction !== 'normal' && (
-                        <GeminiAnalysisCard prediction={latestPrediction} sensorData={formData} />
+
+                    {chartData.length > 0 && (
+                        <GlassCard className="p-6">
+                            <h3 className="text-xl font-semibold text-white mb-4">Sensor Data Trend</h3>
+                            <DataVisualization
+                                data={chartData}
+                                type="line"
+                                height={300}
+                            />
+                        </GlassCard>
                     )}
                 </div>
             </div>
@@ -518,7 +420,7 @@ const RealtimePredictionSection = () => {
     );
 };
 
-const BatchPredictionSection = () => {
+const BatchPredictionSection = ({ showNotification }) => {
     const { data, loading, error, execute } = useApi('/predict/batch', { method: 'POST' });
     const [file, setFile] = useState(null);
     const fileInputRef = useRef();
@@ -536,7 +438,7 @@ const BatchPredictionSection = () => {
 
     const handleSubmit = async () => {
         if (!file) {
-            alert("Please select a file first.");
+            showNotification("Please select a file first.", "error");
             return;
         }
 
@@ -552,17 +454,19 @@ const BatchPredictionSection = () => {
                     const headers = lines[0].split(',').map(h => h.trim());
                     jsonData = lines.slice(1).map(line => {
                         const values = line.split(',');
-                        return headers.reduce((obj, header, index) => {
-                            let value = values[index]?.trim();
-                            obj[header] = isNaN(value) || value === '' ? value : parseFloat(value);
+                        return headers.reduce((obj, header, i) => {
+                            obj[header] = values[i];
                             return obj;
                         }, {});
                     });
                 }
-                const payload = { data: jsonData };
-                await execute(payload);
+
+                const result = await execute({ data: jsonData });
+                if (result) {
+                    showNotification(`Successfully processed ${jsonData.length} records`, "success");
+                }
             } catch (err) {
-                alert("Failed to parse file: " + err.message);
+                showNotification(`Error processing file: ${err.message}`, "error");
             }
         };
         reader.readAsText(file);
@@ -571,69 +475,60 @@ const BatchPredictionSection = () => {
     return (
         <div>
             <h2 className="text-3xl font-bold text-white mb-6">Batch Prediction</h2>
-            <GlassCard className="p-6 mb-6">
-                <h3 className="text-xl font-semibold text-white mb-4">Upload Data File</h3>
-                <div 
-                    className="border-2 border-dashed border-gray-400 rounded-lg p-8 text-center cursor-pointer hover:border-cyan-400 hover:bg-white/5 transition"
-                    onDrop={handleFileDrop}
+            <GlassCard className="p-6">
+                <div
+                    className="border-2 border-dashed border-gray-400 rounded-lg p-8 text-center"
                     onDragOver={(e) => e.preventDefault()}
-                    onClick={() => fileInputRef.current.click()}
+                    onDrop={handleFileDrop}
                 >
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".csv,.json" />
-                    <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                    {file ? (
-                        <p className="text-white">{file.name}</p>
-                    ) : (
-                        <p className="text-gray-300">Drag & drop a CSV or JSON file here, or click to select</p>
-                    )}
-                </div>
-                <button onClick={handleSubmit} disabled={loading || !file} className="mt-4 w-full bg-cyan-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-cyan-600 transition duration-300 disabled:bg-gray-500">
-                    {loading ? 'Processing...' : 'Process Batch'}
-                </button>
-            </GlassCard>
-            
-            {loading && <Loader message="Processing batch file..." />}
-            {error && <ErrorDisplay message={error} />}
-            {data && (
-                <GlassCard className="p-6">
-                    <h3 className="text-xl font-semibold text-white mb-4">Batch Results</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div className="bg-white/10 p-4 rounded-lg text-center">
-                            <p className="text-gray-300 text-sm">Total Predictions</p>
-                            <p className="text-white text-2xl font-bold">{data.summary.total_predictions}</p>
-                        </div>
-                        <div className="bg-white/10 p-4 rounded-lg text-center">
-                            <p className="text-gray-300 text-sm">Anomalies Found</p>
-                            <p className="text-red-400 text-2xl font-bold">{Object.entries(data.summary.class_distribution).reduce((acc, [key, val]) => key !== 'normal' ? acc + val : acc, 0)}</p>
-                        </div>
-                        <div className="bg-white/10 p-4 rounded-lg text-center">
-                            <p className="text-gray-300 text-sm">Avg. Confidence</p>
-                            <p className="text-white text-2xl font-bold">{(data.summary.average_confidence * 100).toFixed(2)}%</p>
-                        </div>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept=".csv,.json"
+                        className="hidden"
+                    />
+                    <div className="space-y-4">
+                        <Upload className="w-12 h-12 text-gray-400 mx-auto" />
+                        <p className="text-lg text-gray-300">
+                            Drag and drop your CSV or JSON file here, or{' '}
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="text-cyan-400 hover:text-cyan-300"
+                            >
+                                browse
+                            </button>
+                        </p>
+                        {file && (
+                            <p className="text-sm text-gray-400">
+                                Selected file: {file.name}
+                            </p>
+                        )}
                     </div>
-                    <div className="overflow-x-auto max-h-96">
-                        <table className="w-full text-left text-sm text-white">
-                            <thead className="bg-white/20 sticky top-0">
-                                <tr>
-                                    <th className="p-2">Timestamp</th>
-                                    <th className="p-2">Prediction</th>
-                                    <th className="p-2">Confidence</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {data.predictions.map((p, i) => (
-                                    <tr key={i} className="border-b border-white/10 hover:bg-white/5">
-                                        <td className="p-2">{new Date(p.timestamp).toLocaleString()}</td>
-                                        <td className="p-2">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${p.prediction === 'normal' ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-300'}`}>
-                                                {p.prediction}
-                                            </span>
-                                        </td>
-                                        <td className="p-2">{(p.confidence * 100).toFixed(2)}%</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                </div>
+                <div className="mt-6 flex justify-end">
+                    <GlassButton
+                        onClick={handleSubmit}
+                        disabled={!file || loading}
+                        className="text-white font-bold"
+                    >
+                        {loading ? 'Processing...' : 'Process File'}
+                    </GlassButton>
+                </div>
+            </GlassCard>
+
+            {data && (
+                <GlassCard className="mt-6 p-6">
+                    <h3 className="text-xl font-semibold text-white mb-4">Results</h3>
+                    <div className="space-y-4">
+                        <p className="text-gray-300">
+                            Processed {data.length} records
+                        </p>
+                        <DataVisualization
+                            data={data}
+                            type="line"
+                            height={400}
+                        />
                     </div>
                 </GlassCard>
             )}
@@ -641,94 +536,82 @@ const BatchPredictionSection = () => {
     );
 };
 
-const SimulateDataSection = () => {
-    const { data, loading, error, execute } = useApi('/simulate');
-    const [numSamples, setNumSamples] = useState(200);
-    const [includeAnomalies, setIncludeAnomalies] = useState(true);
+const SimulateDataSection = ({ showNotification }) => {
+    const { loading, error, execute } = useApi('/simulate', { method: 'POST' });
+    const [config, setConfig] = useState({
+        n_days: 7,
+        sampling_rate_seconds: 60,
+        inject_anomalies: true
+    });
 
-    const handleSimulate = () => {
-        execute(null, { num_samples: numSamples, include_anomalies: includeAnomalies });
+    const handleInputChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setConfig(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : parseInt(value)
+        }));
     };
 
-    return (
-        <div>
-            <h2 className="text-3xl font-bold text-white mb-6">Simulate Sensor Data</h2>
-            <GlassCard className="p-6 mb-6">
-                <div className="flex flex-wrap items-center gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Number of Samples</label>
-                        <input type="number" value={numSamples} onChange={(e) => setNumSamples(parseInt(e.target.value))} className="bg-white/10 border border-white/20 rounded-lg p-2 text-white w-32" />
-                    </div>
-                    <div className="flex items-center pt-6">
-                        <input type="checkbox" id="anomalies" checked={includeAnomalies} onChange={(e) => setIncludeAnomalies(e.target.checked)} className="h-4 w-4 rounded border-gray-300 bg-white/10 text-cyan-500 focus:ring-cyan-500" />
-                        <label htmlFor="anomalies" className="ml-2 text-sm text-gray-300">Include Anomalies</label>
-                    </div>
-                    <button onClick={handleSimulate} disabled={loading} className="ml-auto bg-cyan-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-cyan-600 transition duration-300 disabled:bg-gray-500">
-                        {loading ? 'Generating...' : 'Generate Data'}
-                    </button>
-                </div>
-            </GlassCard>
-
-            {loading && <Loader message="Simulating data..." />}
-            {error && <ErrorDisplay message={error} />}
-            {data && data.data && (
-                <GlassCard className="p-6">
-                    <h3 className="text-xl font-semibold text-white mb-4">Simulated Data Visualization</h3>
-                    <ResponsiveContainer width="100%" height={400}>
-                        <AreaChart data={data.data.map(d => ({...d, timestamp: new Date(d.timestamp).toLocaleTimeString()}))}>
-                            <defs>
-                                <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
-                                </linearGradient>
-                                <linearGradient id="colorPulse" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.2)" />
-                            <XAxis dataKey="timestamp" stroke="rgba(255, 255, 255, 0.7)" />
-                            <YAxis yAxisId="left" stroke="rgba(255, 255, 255, 0.7)" />
-                            <YAxis yAxisId="right" orientation="right" stroke="rgba(255, 255, 255, 0.7)" />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area yAxisId="left" type="monotone" dataKey="temperature" stroke="#8884d8" fillOpacity={1} fill="url(#colorTemp)" />
-                            <Area yAxisId="right" type="monotone" dataKey="pulse" stroke="#82ca9d" fillOpacity={1} fill="url(#colorPulse)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </GlassCard>
-            )}
-        </div>
-    );
-};
-
-// --- Main App Component ---
-export default function App() {
-    const [activeSection, setActiveSection] = useState('dashboard');
-
-    const renderSection = () => {
-        switch (activeSection) {
-            case 'dashboard': return <DashboardSection />;
-            case 'status': return <SystemStatusSection />;
-            case 'models': return <ModelsSection />;
-            case 'predict': return <RealtimePredictionSection />;
-            case 'batch': return <BatchPredictionSection />;
-            case 'simulate': return <SimulateDataSection />;
-            default: return <DashboardSection />;
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const result = await execute(config);
+        if (result) {
+            showNotification("Successfully generated simulation data", "success");
         }
     };
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white font-sans bg-cover bg-center" style={{backgroundImage: "url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2071&auto=format&fit=crop')"}}>
-            <div className="flex h-screen p-4 gap-4">
-                <aside className="w-64 flex-shrink-0">
-                    <Sidebar activeSection={activeSection} setActiveSection={setActiveSection} />
-                </aside>
-                <main className="flex-1 overflow-y-auto pr-2">
-                     <div className="h-full rounded-2xl p-6 transition-all duration-500">
-                        {renderSection()}
+        <div>
+            <h2 className="text-3xl font-bold text-white mb-6">Simulate Data</h2>
+            <GlassCard className="p-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                            Number of Days
+                        </label>
+                        <GlassInput
+                            type="number"
+                            name="n_days"
+                            value={config.n_days}
+                            onChange={handleInputChange}
+                            min="1"
+                            max="30"
+                        />
                     </div>
-                </main>
-            </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                            Sampling Rate (seconds)
+                        </label>
+                        <GlassInput
+                            type="number"
+                            name="sampling_rate_seconds"
+                            value={config.sampling_rate_seconds}
+                            onChange={handleInputChange}
+                            min="1"
+                            max="3600"
+                        />
+                    </div>
+                    <div className="flex items-center">
+                        <input
+                            type="checkbox"
+                            name="inject_anomalies"
+                            checked={config.inject_anomalies}
+                            onChange={handleInputChange}
+                            className="h-4 w-4 text-cyan-400 focus:ring-cyan-400 border-gray-300 rounded"
+                        />
+                        <label className="ml-2 text-sm text-gray-300">
+                            Inject Anomalies
+                        </label>
+                    </div>
+                    <GlassButton
+                        type="submit"
+                        disabled={loading}
+                        className="w-full text-white font-bold py-2 px-4"
+                    >
+                        {loading ? 'Generating...' : 'Generate Data'}
+                    </GlassButton>
+                </form>
+            </GlassCard>
         </div>
     );
-}
+};
